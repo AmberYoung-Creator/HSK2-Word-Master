@@ -65,28 +65,14 @@
 </head>
 <body>
 
-<div id="root"></div>
+    <div id="root"></div>
 
-<script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-    // --- DATA ---
-    // Paste your FULL HSK2 vocabulary list here in this same structure.
-    // Each item:
-    // { id: number, lesson: "L01"..."L15", hanzi: "...", pinyin: "...", en: "...", ru: "...", sentence: "...", chunks: ["...", "..."] }
-    const RAW_DATA = [
-        // EXAMPLE FORMAT (DELETE THESE EXAMPLES AND PASTE YOUR REAL HSK2 DATA)
-        // L01
-        // { id: 20101, lesson: "L01", hanzi: "正在", pinyin: "zhèngzài", en: "in the middle of (doing)", ru: "в процессе (делания)", sentence: "我正在吃饭。", chunks: ["我", "正在", "吃饭"] },
-        // ...
-        // Make sure:
-        // - lesson values are "L01" ... "L15"
-        // - All HSK2 words are included once, in the correct lesson
-        // - Sentence + chunks are provided for Sentence Builder mode
-    ];
-
-    // --- DECK CONFIGURATION (HSK2) ---
-    const HSK2_VOCAB = [
+        // --- DATA ---
+        // Full HSK2 Vocabulary List
+        const HSK2_VOCAB = [
             // L01
             { id: 1, lesson: "L01", hanzi: "觉得", pinyin: "juéde", en: "to think, to feel", ru: "думать, чувствовать", sentence: "你觉得中国菜怎么样？", chunks: ["你", "觉得", "中国菜", "怎么样"] },
             { id: 2, lesson: "L01", hanzi: "旅游", pinyin: "lǚyóu", en: "to travel", ru: "путешествовать", sentence: "我明天出发去北京旅游。", chunks: ["我", "明天", "出发", "去北京", "旅游"] },
@@ -265,596 +251,473 @@
             { id: 147, lesson: "L15", hanzi: "阴", pinyin: "yīn", en: "cloudy", ru: "пасмурный", sentence: "今天的天气有点阴。", chunks: ["今天的", "天气", "有点", "阴"] }
         ];
 
-    // --- UTILS ---
-    const speak = (text, lang = 'zh-CN') => {
-        if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang;
-        utterance.rate = 0.8;
-        window.speechSynthesis.speak(utterance);
-    };
+        // --- DECK CONFIGURATION ---
+        const DECKS = [
+            { id: 'L01-L03', label: 'Lessons 1-3', range: ['L01', 'L02', 'L03'] },
+            { id: 'L04-L06', label: 'Lessons 4-6', range: [''L04', L05', 'L06'] },
+            { id: 'L07-L09', label: 'Lessons 7-9', range: [''L07', L08', 'L09'] },
+            { id: 'L10-L12', label: 'Lessons 10-12', range: ['L10', 'L11', 'L12'] },
+            { id: 'L13-L15', label: 'Lessons 13-15', range: ['L13', 'L14', 'L15'] },
+            { id: 'ALL', label: 'All Lessons (1-15)', range: 'ALL' }
+        ];
 
-    const shuffleArray = (array) => {
-        const newArr = [...array];
-        for (let i = newArr.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-        }
-        return newArr;
-    };
-
-    // --- COMPONENTS ---
-
-    const ProgressBar = ({ current, total, label }) => (
-        <div className="w-full bg-amber-200 rounded-full h-3 mb-4 relative overflow-hidden">
-            <div 
-                className="bg-amber-500 h-3 rounded-full transition-all duration-500" 
-                style={{ width: `${(total > 0 ? (current / total) : 0) * 100}%` }}
-            ></div>
-            <span className="absolute top-0 right-1 text-[8px] text-amber-900 font-bold leading-3">
-                {current}/{total}
-            </span>
-        </div>
-    );
-
-    // 1. FLASHCARD MODE
-    const FlashcardMode = ({ words, onUpdateMastery }) => {
-        const [index, setIndex] = useState(0);
-        const [flipped, setFlipped] = useState(false);
-        
-        // Reset when deck changes
-        useEffect(() => {
-            setIndex(0);
-            setFlipped(false);
-        }, [words]);
-
-        if (!words || words.length === 0) {
-            return <div className="text-center p-10 text-amber-500">Deck Empty</div>;
-        }
-        
-        const currentWord = words[index];
-
-        const handleNext = (score) => {
-            onUpdateMastery(currentWord.id, score);
-            setFlipped(false);
-            setTimeout(
-                () => setIndex((prev) => (prev + 1) % words.length),
-                200
-            );
+        // --- UTILS ---
+        const speak = (text, lang = 'zh-CN') => {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang;
+            utterance.rate = 0.8;
+            window.speechSynthesis.speak(utterance);
         };
 
-        useEffect(() => {
-            const handleKey = (e) => {
-                if (e.code === 'Space') { 
-                    e.preventDefault(); 
-                    setFlipped((p) => !p); 
-                }
-                if (e.key.toLowerCase() === 'k' && flipped) handleNext(1);
-                if (e.key.toLowerCase() === 'a' && flipped) handleNext(0);
-                if (e.key.toLowerCase() === 'v') speak(currentWord.hanzi);
-            };
-            window.addEventListener('keydown', handleKey);
-            return () => window.removeEventListener('keydown', handleKey);
-        }, [flipped, index, currentWord]);
+        const shuffleArray = (array) => {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        };
 
-        return (
-            <div className="flex flex-col items-center w-full max-w-sm mx-auto mt-4">
-                <ProgressBar current={index + 1} total={words.length} label="Card" />
-                
+        // --- COMPONENTS ---
+
+        const ProgressBar = ({ current, total, label }) => (
+            <div className="w-full bg-amber-200 rounded-full h-3 mb-4 relative overflow-hidden">
                 <div 
-                    className="card-perspective w-full h-80 cursor-pointer group" 
-                    onClick={() => setFlipped(!flipped)}
-                >
-                    <div className={`card-inner w-full h-full relative rounded-2xl shadow-xl duration-500 ${flipped ? 'card-flipped' : ''}`}>
-                        {/* Front */}
-                        <div className="card-front absolute w-full h-full bg-white rounded-2xl flex flex-col items-center justify-center p-6 border-2 border-amber-100">
-                            <span className="text-xs text-amber-400 font-bold mb-2 uppercase tracking-widest">
-                                {currentWord.lesson}
-                            </span>
-                            <h1 className="zh-text text-6xl text-gray-800 font-bold mb-4">
-                                {currentWord.hanzi}
-                            </h1>
-                            <div className="mt-8 text-gray-400 text-xs italic">(Space to Flip)</div>
-                        </div>
+                    className="bg-amber-500 h-3 rounded-full transition-all duration-500" 
+                    style={{ width: `${(current / total) * 100}%` }}
+                ></div>
+                <span className="absolute top-0 right-1 text-[8px] text-amber-900 font-bold leading-3">
+                    {current}/{total}
+                </span>
+            </div>
+        );
 
-                        {/* Back */}
-                        <div className="card-back absolute w-full h-full bg-amber-50 rounded-2xl flex flex-col items-center justify-center p-6 border-2 border-amber-200">
-                            <h2 className="text-3xl text-amber-600 font-bold mb-2">{currentWord.pinyin}</h2>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); speak(currentWord.hanzi); }}
-                                className="mb-6 w-10 h-10 bg-white rounded-full flex items-center justify-center text-amber-500 shadow-sm hover:scale-110 transition"
-                            >
-                                <i className="ph-fill ph-speaker-high text-xl"></i>
-                            </button>
-                            <div className="bg-white p-3 rounded-lg shadow-sm w-full mb-2 text-center">
-                                <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">English</span>
-                                <p className="text-gray-800 font-bold leading-tight">{currentWord.en}</p>
+        // 1. FLASHCARD MODE
+        const FlashcardMode = ({ words, onUpdateMastery }) => {
+            const [index, setIndex] = useState(0);
+            const [flipped, setFlipped] = useState(false);
+            
+            // Reset index if deck changes
+            useEffect(() => { setIndex(0); setFlipped(false); }, [words]);
+            
+            if (words.length === 0) return <div className="text-center p-10 text-amber-500">Deck Empty</div>;
+            
+            const currentWord = words[index];
+
+            const handleNext = (score) => {
+                onUpdateMastery(currentWord.id, score);
+                setFlipped(false);
+                setTimeout(() => setIndex((prev) => (prev + 1) % words.length), 200);
+            };
+
+            useEffect(() => {
+                const handleKey = (e) => {
+                    if (e.code === 'Space') { e.preventDefault(); setFlipped(p => !p); }
+                    if (e.key.toLowerCase() === 'k' && flipped) handleNext(1);
+                    if (e.key.toLowerCase() === 'a' && flipped) handleNext(0);
+                    if (e.key.toLowerCase() === 'v') speak(currentWord.hanzi);
+                };
+                window.addEventListener('keydown', handleKey);
+                return () => window.removeEventListener('keydown', handleKey);
+            }, [flipped, index, currentWord]);
+
+            return (
+                <div className="flex flex-col items-center w-full max-w-sm mx-auto mt-4">
+                    <ProgressBar current={index + 1} total={words.length} label="Card" />
+                    
+                    <div className="card-perspective w-full h-80 cursor-pointer group" onClick={() => setFlipped(!flipped)}>
+                        <div className={`card-inner w-full h-full relative rounded-2xl shadow-xl duration-500 ${flipped ? 'card-flipped' : ''}`}>
+                            <div className="card-front absolute w-full h-full bg-white rounded-2xl flex flex-col items-center justify-center p-6 border-2 border-amber-100">
+                                <span className="text-xs text-amber-400 font-bold mb-2 uppercase tracking-widest">{currentWord.lesson}</span>
+                                <h1 className="zh-text text-6xl text-gray-800 font-bold mb-4">{currentWord.hanzi}</h1>
+                                <div className="mt-8 text-gray-400 text-xs italic">(Space to Flip)</div>
                             </div>
-                            <div className="bg-white p-3 rounded-lg shadow-sm w-full text-center">
-                                <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Russian</span>
-                                <p className="text-gray-800 font-bold leading-tight">{currentWord.ru}</p>
+
+                            <div className="card-back absolute w-full h-full bg-amber-50 rounded-2xl flex flex-col items-center justify-center p-6 border-2 border-amber-200">
+                                <h2 className="text-3xl text-amber-600 font-bold mb-2">{currentWord.pinyin}</h2>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); speak(currentWord.hanzi); }}
+                                    className="mb-6 w-10 h-10 bg-white rounded-full flex items-center justify-center text-amber-500 shadow-sm hover:scale-110 transition"
+                                >
+                                    <i className="ph-fill ph-speaker-high text-xl"></i>
+                                </button>
+                                <div className="bg-white p-3 rounded-lg shadow-sm w-full mb-2 text-center">
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">English</span>
+                                    <p className="text-gray-800 font-bold leading-tight">{currentWord.en}</p>
+                                </div>
+                                <div className="bg-white p-3 rounded-lg shadow-sm w-full text-center">
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Russian</span>
+                                    <p className="text-gray-800 font-bold leading-tight">{currentWord.ru}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex gap-3 mt-6 w-full">
-                    <button 
-                        onClick={() => handleNext(0)} 
-                        className="flex-1 py-3 bg-rose-100 text-rose-600 font-bold rounded-xl hover:bg-rose-200 transition border border-rose-200 shadow-sm"
-                    >
-                        (A)gain
-                    </button>
-                    <button 
-                        onClick={() => handleNext(1)} 
-                        className="flex-1 py-3 bg-emerald-100 text-emerald-600 font-bold rounded-xl hover:bg-emerald-200 transition border border-emerald-200 shadow-sm"
-                    >
-                        (K)new
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
-    // 2. QUIZ MODE
-    const QuizMode = ({ words }) => {
-        const [current, setCurrent] = useState(null);
-        const [options, setOptions] = useState([]);
-        const [status, setStatus] = useState('guessing');
-        const [stats, setStats] = useState({ correct: 0, total: 0 });
-
-        const generateQuestion = () => {
-            if (!words || words.length < 4) return;
-            const target = words[Math.floor(Math.random() * words.length)];
-            const distractors = shuffleArray(words.filter(w => w.id !== target.id)).slice(0, 3);
-            const allOptions = shuffleArray([target, ...distractors]);
-            setCurrent(target);
-            setOptions(allOptions);
-            setStatus('guessing');
-        };
-
-        useEffect(() => { 
-            if (words && words.length >= 4) {
-                generateQuestion(); 
-            } else {
-                setCurrent(null);
-            }
-        }, [words]);
-
-        const handleGuess = (wordId) => {
-            if (status !== 'guessing' || !current) return;
-            const isCorrect = wordId === current.id;
-            setStats(s => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
-            setStatus(isCorrect ? 'correct' : 'wrong');
-            if (isCorrect) speak(current.hanzi);
-        };
-
-        if (!current) return <div className="text-center p-10">Not enough words for quiz</div>;
-
-        return (
-            <div className="w-full max-w-sm mx-auto mt-6">
-                <div className="flex justify-between text-amber-800 font-bold mb-4 text-sm bg-amber-100 px-3 py-1 rounded-lg">
-                    <span>Score: {stats.correct}</span>
-                    <span>Total: {stats.total}</span>
-                </div>
-
-                <div className="bg-white p-10 rounded-2xl shadow-sm border-b-4 border-amber-200 text-center mb-6">
-                    <h2 className="zh-text text-6xl font-bold text-gray-800 mb-2">{current.hanzi}</h2>
-                    <p className="text-gray-400 font-mono text-lg">
-                        {status !== 'guessing' ? current.pinyin : '???'}
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3">
-                    {options.map(opt => (
-                        <button
-                            key={opt.id}
-                            onClick={() => handleGuess(opt.id)}
-                            disabled={status !== 'guessing'}
-                            className={`
-                                p-4 rounded-xl text-left transition font-medium border-2 relative
-                                ${status === 'guessing' ? 'bg-white border-gray-100 hover:bg-amber-50 hover:border-amber-200' : ''}
-                                ${status !== 'guessing' && opt.id === current.id ? 'bg-green-50 border-green-400 text-green-800' : ''}
-                                ${status === 'wrong' && opt.id !== current.id ? 'opacity-50 border-transparent' : ''}
-                                ${status === 'wrong' && opt.id === current.id ? 'bg-green-50 border-green-400 text-green-800' : ''} 
-                            `}
-                        >
-                            <div className="text-gray-800">{opt.en}</div>
-                            <div className="text-gray-400 text-xs">{opt.ru}</div>
-                        </button>
-                    ))}
-                </div>
-
-                {status !== 'guessing' && (
-                    <button 
-                        onClick={generateQuestion} 
-                        className="w-full mt-6 py-3 bg-amber-500 text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition"
-                    >
-                        Next Word <i className="ph-bold ph-arrow-right ml-1"></i>
-                    </button>
-                )}
-            </div>
-        );
-    };
-
-    // 3. SENTENCE BUILDER
-    const SentenceBuilder = ({ words }) => {
-        const [currentQ, setCurrentQ] = useState(0);
-        const [userOrder, setUserOrder] = useState([]);
-        const [bank, setBank] = useState([]);
-        const [isCorrect, setIsCorrect] = useState(false);
-
-        // Only words that have sentence chunks defined
-        const validWords = useMemo(
-            () => (words || []).filter(w => w.chunks && w.chunks.length > 0),
-            [words]
-        );
-        const currentWord = validWords[currentQ];
-
-        useEffect(() => {
-            if (currentWord) resetLevel();
-        }, [currentQ, validWords.length]);
-
-        const resetLevel = () => {
-            const chunks = currentWord.chunks;
-            setBank(shuffleArray(chunks.map((c, i) => ({ id: i, text: c }))));
-            setUserOrder([]);
-            setIsCorrect(false);
-        };
-
-        const handleBankClick = (item) => {
-            if (!currentWord || isCorrect) return;
-            const newBank = bank.filter(i => i.id !== item.id);
-            const newOrder = [...userOrder, item];
-            setBank(newBank);
-            setUserOrder(newOrder);
-            
-            const currentStr = newOrder.map(o => o.text).join('');
-            const targetStr = currentWord.chunks.join('');
-            
-            if (currentStr === targetStr) {
-                setIsCorrect(true);
-                speak(currentWord.sentence);
-            }
-        };
-
-        const handleSlotClick = (item) => {
-            if (isCorrect) return;
-            setUserOrder(userOrder.filter(i => i.id !== item.id));
-            setBank([...bank, item]);
-        };
-
-        const nextLevel = () => {
-            if (validWords.length === 0) return;
-            setCurrentQ((prev) => (prev + 1) % validWords.length);
-        };
-
-        if (!currentWord) {
-            return (
-                <div className="text-center p-10 text-amber-500">
-                    No sentences available in this deck yet.
+                    <div className="flex gap-3 mt-6 w-full">
+                        <button onClick={() => handleNext(0)} className="flex-1 py-3 bg-rose-100 text-rose-600 font-bold rounded-xl hover:bg-rose-200 transition border border-rose-200 shadow-sm">(A)gain</button>
+                        <button onClick={() => handleNext(1)} className="flex-1 py-3 bg-emerald-100 text-emerald-600 font-bold rounded-xl hover:bg-emerald-200 transition border border-emerald-200 shadow-sm">(K)new</button>
+                    </div>
                 </div>
             );
-        }
+        };
 
-        return (
-            <div className="w-full max-w-md mx-auto mt-4 flex flex-col h-[calc(100vh-180px)]">
-                <ProgressBar current={currentQ + 1} total={validWords.length} label="Sentence" />
-                
-                <div className="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-amber-400 mb-4">
-                    <div className="text-lg font-bold text-gray-800 mb-1">{currentWord.en}</div>
-                    <div className="text-sm text-gray-500">{currentWord.ru}</div>
-                    <div className="text-xs text-amber-500 mt-2 font-bold uppercase">Build the sentence</div>
-                </div>
+        // 2. QUIZ MODE
+        const QuizMode = ({ words }) => {
+            const [current, setCurrent] = useState(null);
+            const [options, setOptions] = useState([]);
+            const [status, setStatus] = useState('guessing');
+            const [stats, setStats] = useState({ correct: 0, total: 0 });
 
-                <div className={`flex-grow bg-amber-50 rounded-2xl p-4 border-2 border-dashed transition-colors flex content-start flex-wrap gap-2
-                    ${isCorrect ? 'border-green-400 bg-green-50' : 'border-amber-300'}`}
-                >
-                    {userOrder.length === 0 && !isCorrect && (
-                        <div className="w-full text-center text-amber-300 mt-10 font-bold text-sm">
-                            Tap words below
-                        </div>
-                    )}
+            const generateQuestion = () => {
+                if(words.length < 4) return;
+                const target = words[Math.floor(Math.random() * words.length)];
+                const distractors = shuffleArray(words.filter(w => w.id !== target.id)).slice(0, 3);
+                const allOptions = shuffleArray([target, ...distractors]);
+                setCurrent(target);
+                setOptions(allOptions);
+                setStatus('guessing');
+            };
 
-                    {userOrder.map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => handleSlotClick(item)}
-                            className="zh-text bg-white px-3 py-2 rounded-lg shadow-sm text-lg border-b-2 border-gray-200 animate-pop font-bold text-gray-700"
-                        >
-                            {item.text}
-                        </button>
-                    ))}
-                </div>
+            useEffect(() => { generateQuestion(); }, [words]);
 
-                {isCorrect && (
-                    <div className="animate-pop my-4 p-4 bg-green-100 rounded-xl border border-green-300 text-center shadow-lg">
-                        <h3 className="text-green-800 font-bold text-xl mb-1">Correct! 🎉</h3>
-                        <button
-                            onClick={nextLevel}
-                            className="bg-green-600 text-white px-8 py-2 rounded-full font-bold shadow hover:bg-green-700 mt-2"
-                        >
-                            Next
-                        </button>
+            const handleGuess = (wordId) => {
+                if (status !== 'guessing') return;
+                const isCorrect = wordId === current.id;
+                setStats(s => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
+                setStatus(isCorrect ? 'correct' : 'wrong');
+                if (isCorrect) speak(current.hanzi);
+            };
+
+            if (!current) return <div className="text-center p-10">Not enough words for quiz</div>;
+
+            return (
+                <div className="w-full max-w-sm mx-auto mt-6">
+                    <div className="flex justify-between text-amber-800 font-bold mb-4 text-sm bg-amber-100 px-3 py-1 rounded-lg">
+                        <span>Score: {stats.correct}</span>
+                        <span>Total: {stats.total}</span>
                     </div>
-                )}
 
-                <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                    {bank.map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => handleBankClick(item)}
-                            className="zh-text bg-white px-4 py-3 rounded-xl shadow border border-amber-100 hover:bg-amber-50 text-lg font-bold text-gray-800"
-                        >
-                            {item.text}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
-    };
+                    <div className="bg-white p-10 rounded-2xl shadow-sm border-b-4 border-amber-200 text-center mb-6">
+                        <h2 className="zh-text text-6xl font-bold text-gray-800 mb-2">{current.hanzi}</h2>
+                        <p className="text-gray-400 font-mono text-lg">{status !== 'guessing' ? current.pinyin : '???'}</p>
+                    </div>
 
-    // 4. TYPE IT MODE
-    const TypeItMode = ({ words }) => {
-        const [index, setIndex] = useState(0);
-        const [input, setInput] = useState('');
-        const [status, setStatus] = useState('typing'); // typing, correct, wrong
-
-        if (!words || words.length === 0) {
-            return <div className="text-center p-10 text-amber-500">Deck Empty</div>;
-        }
-
-        const word = words[index];
-
-        const handleSubmit = (e) => {
-            e.preventDefault();
-            if (input.trim() === word.hanzi) {
-                setStatus('correct');
-                speak(word.hanzi);
-            } else {
-                setStatus('wrong');
-                speak('再试一次');
-            }
-        };
-
-        const next = () => {
-            setIndex((prev) => (prev + 1) % words.length);
-            setInput('');
-            setStatus('typing');
-        };
-
-        return (
-            <div className="w-full max-w-sm mx-auto mt-10 text-center">
-                <div className="bg-white p-8 rounded-3xl shadow-lg border border-amber-100 mb-8 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-2 bg-amber-400"></div>
-                    <h2 className="text-3xl font-bold text-gray-800 mb-2">{word.en}</h2>
-                    <p className="text-gray-400 font-medium">{word.ru}</p>
-                </div>
-
-                <form onSubmit={handleSubmit}>
-                    <input 
-                        type="text" 
-                        value={input}
-                        onChange={(e) => { setInput(e.target.value); setStatus('typing'); }}
-                        placeholder="Type Hanzi..."
-                        className={`zh-text w-full p-4 text-center text-4xl rounded-2xl border-2 outline-none transition shadow-inner
-                            ${status === 'correct' ? 'border-green-500 bg-green-50 text-green-900' : 'border-gray-200 focus:border-amber-400'}
-                            ${status === 'wrong' ? 'border-red-400 bg-red-50' : ''}
-                        `}
-                    />
-                    {status === 'correct' && (
-                        <div className="mt-6 animate-pop">
-                            <div className="text-green-600 font-bold mb-3 text-lg">{word.pinyin}</div>
-                            <button 
-                                type="button" 
-                                onClick={next} 
-                                className="bg-amber-500 text-white px-10 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition"
+                    <div className="grid grid-cols-1 gap-3">
+                        {options.map(opt => (
+                            <button
+                                key={opt.id}
+                                onClick={() => handleGuess(opt.id)}
+                                disabled={status !== 'guessing'}
+                                className={`p-4 rounded-xl text-left transition font-medium border-2 relative
+                                    ${status === 'guessing' ? 'bg-white border-gray-100 hover:bg-amber-50 hover:border-amber-200' : ''}
+                                    ${status !== 'guessing' && opt.id === current.id ? 'bg-green-50 border-green-400 text-green-800' : ''}
+                                    ${status === 'wrong' && opt.id !== current.id ? 'opacity-50 border-transparent' : ''}
+                                    ${status === 'wrong' && opt.id === current.id ? 'bg-green-50 border-green-400 text-green-800' : ''} 
+                                `}
                             >
-                                Next
-                            </button>
-                        </div>
-                    )}
-                    {status === 'wrong' && (
-                        <div className="mt-4 text-red-500 font-bold animate-pulse">
-                            Answer: {word.hanzi}
-                        </div>
-                    )}
-                    {status === 'typing' && (
-                        <button 
-                            type="submit" 
-                            className="mt-6 text-amber-400 font-bold text-sm tracking-wider uppercase"
-                        >
-                            Press Enter to Check
-                        </button>
-                    )}
-                </form>
-            </div>
-        );
-    };
-
-    // 5. LIST VIEW MODE
-    const ListView = ({ words }) => (
-        <div className="w-full max-w-md mx-auto mt-2 pb-20">
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-amber-100">
-                <div className="bg-amber-50 px-4 py-3 border-b border-amber-100 flex justify-between items-center sticky top-0">
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
-                        {words ? words.length : 0} Words
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-bold bg-white px-2 py-1 rounded-full border border-gray-100">
-                        Tap row to listen
-                    </span>
-                </div>
-                <div className="divide-y divide-gray-50 max-h-[70vh] overflow-y-auto no-scrollbar">
-                    {(words || []).map(w => (
-                        <div 
-                            key={w.id} 
-                            onClick={() => speak(w.hanzi)}
-                            className="p-4 hover:bg-amber-50 transition-colors cursor-pointer flex justify-between items-center group"
-                        >
-                            <div>
-                                <div className="flex items-baseline gap-2">
-                                    <div className="zh-text text-xl font-bold text-gray-800 group-hover:text-amber-600 transition-colors">
-                                        {w.hanzi}
-                                    </div>
-                                    <div className="text-xs text-gray-400 font-mono">
-                                        {w.pinyin}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-right max-w-[50%]">
-                                <div className="text-sm font-bold text-gray-700 leading-tight">
-                                    {w.en}
-                                </div>
-                                <div className="text-xs text-gray-400 mt-0.5">
-                                    {w.ru}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-
-    // --- MAIN APP COMPONENT ---
-    const App = () => {
-        const [currentDeckId, setCurrentDeckId] = useState('L01-L03');
-        const [mode, setMode] = useState('flashcard');
-        const [mastery, setMastery] = useState({});
-        const [showDeckMenu, setShowDeckMenu] = useState(false);
-
-        // Load progress (separate key for HSK2)
-        useEffect(() => {
-            const saved = localStorage.getItem('hsk2_mastery');
-            if (saved) {
-                try {
-                    setMastery(JSON.parse(saved));
-                } catch {
-                    setMastery({});
-                }
-            }
-        }, []);
-
-        const updateMastery = (id, score) => {
-            const newMastery = { ...mastery, [id]: (mastery[id] || 0) + score };
-            setMastery(newMastery);
-            localStorage.setItem('hsk2_mastery', JSON.stringify(newMastery));
-        };
-
-        const resetProgress = () => {
-            if (confirm("Reset all progress?")) {
-                setMastery({});
-                localStorage.removeItem('hsk2_mastery');
-            }
-        };
-
-        // Filter words based on deck
-        const activeWords = useMemo(() => {
-            const deckConfig = DECKS.find(d => d.id === currentDeckId);
-            if (!deckConfig) return RAW_DATA;
-            if (deckConfig.range === 'ALL') return RAW_DATA;
-            return RAW_DATA.filter(w => deckConfig.range.includes(w.lesson));
-        }, [currentDeckId]);
-
-        const currentDeckLabel = (DECKS.find(d => d.id === currentDeckId) || DECKS[0]).label;
-
-        const NavBtn = ({ id, icon, label }) => (
-            <button 
-                onClick={() => setMode(id)} 
-                className={`flex flex-col items-center gap-1 p-2 transition-all ${mode === id ? 'text-amber-600' : 'text-gray-300 hover:text-amber-400'}`}
-            >
-                <i className={`ph-fill ${icon} text-2xl ${mode === id ? 'scale-110' : ''}`}></i>
-                <span className="text-[10px] font-bold uppercase">{label}</span>
-            </button>
-        );
-
-        return (
-            <div className="min-h-screen flex flex-col bg-amber-50 pb-24 relative overflow-hidden">
-                {/* Header */}
-                <header className="bg-white shadow-sm sticky top-0 z-20 px-4 py-3 flex justify-between items-center rounded-b-2xl">
-                    <div className="flex items-center gap-2 text-amber-600">
-                        <div className="w-12 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                            <span className="font-extrabold text-sm">HSK2</span>
-                        </div>
-                        <div>
-                            <h1 className="font-bold text-gray-800 leading-tight">Word Master</h1>
-                            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">
-                                {currentDeckLabel}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={resetProgress} 
-                            className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center"
-                        >
-                            <i className="ph-bold ph-trash"></i>
-                        </button>
-                        <button 
-                            onClick={() => setShowDeckMenu(!showDeckMenu)} 
-                            className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shadow-sm active:scale-95 transition"
-                        >
-                            <i className="ph-bold ph-folders"></i>
-                        </button>
-                    </div>
-                </header>
-
-                {/* Deck Menu Overlay */}
-                {showDeckMenu && (
-                    <div className="absolute top-16 right-4 z-30 bg-white rounded-2xl shadow-xl border border-amber-100 p-2 w-48 animate-pop origin-top-right">
-                        <div className="text-xs font-bold text-gray-400 px-3 py-2 uppercase">
-                            Select Deck
-                        </div>
-                        {DECKS.map(deck => (
-                            <button 
-                                key={deck.id}
-                                onClick={() => { 
-                                    setCurrentDeckId(deck.id); 
-                                    setShowDeckMenu(false); 
-                                }}
-                                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold mb-1 transition 
-                                    ${currentDeckId === deck.id ? 'bg-amber-100 text-amber-700' : 'text-gray-600 hover:bg-gray-50'}`}
-                            >
-                                {deck.label}
+                                <div className="text-gray-800">{opt.en}</div>
+                                <div className="text-gray-400 text-xs">{opt.ru}</div>
                             </button>
                         ))}
                     </div>
-                )}
 
-                {/* Content */}
-                <main className="flex-grow px-4 py-6 relative z-10">
-                    {mode === 'flashcard' && (
-                        <FlashcardMode words={activeWords} onUpdateMastery={updateMastery} />
+                    {status !== 'guessing' && (
+                        <button onClick={generateQuestion} className="w-full mt-6 py-3 bg-amber-500 text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition">
+                            Next Word <i className="ph-bold ph-arrow-right ml-1"></i>
+                        </button>
                     )}
-                    {mode === 'quiz' && (
-                        <QuizMode words={activeWords} />
-                    )}
-                    {mode === 'typeit' && (
-                        <TypeItMode words={activeWords} />
-                    )}
-                    {mode === 'sentence' && (
-                        <SentenceBuilder words={activeWords} />
-                    )}
-                    {mode === 'list' && (
-                        <ListView words={activeWords} />
-                    )}
-                </main>
+                </div>
+            );
+        };
 
-                {/* Bottom Nav */}
-                <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-amber-100 pb-safe px-2 py-2 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 rounded-t-3xl">
-                    <NavBtn id="flashcard" icon="ph-cards" label="Cards" />
-                    <NavBtn id="list" icon="ph-list-dashes" label="List" />
-                    <NavBtn id="quiz" icon="ph-question" label="Quiz" />
-                    <NavBtn id="sentence" icon="ph-squares-four" label="Build" />
-                    <NavBtn id="typeit" icon="ph-keyboard" label="Type" />
-                </nav>
+        // 3. SENTENCE BUILDER
+        const SentenceBuilder = ({ words }) => {
+            const [currentQ, setCurrentQ] = useState(0);
+            const [userOrder, setUserOrder] = useState([]);
+            const [bank, setBank] = useState([]);
+            const [isCorrect, setIsCorrect] = useState(false);
+
+            // Filter out words that don't have sentence chunks properly defined
+            const validWords = useMemo(() => words.filter(w => w.chunks && w.chunks.length > 0), [words]);
+            const currentWord = validWords[currentQ];
+
+            useEffect(() => {
+                if (currentWord) resetLevel();
+            }, [currentQ, validWords]);
+
+            const resetLevel = () => {
+                const chunks = currentWord.chunks;
+                setBank(shuffleArray(chunks.map((c, i) => ({ id: i, text: c }))));
+                setUserOrder([]);
+                setIsCorrect(false);
+            };
+
+            const handleBankClick = (item) => {
+                const newBank = bank.filter(i => i.id !== item.id);
+                const newOrder = [...userOrder, item];
+                setBank(newBank);
+                setUserOrder(newOrder);
+                
+                const currentStr = newOrder.map(o => o.text).join('');
+                const targetStr = currentWord.chunks.join('');
+                
+                if (currentStr === targetStr) {
+                    setIsCorrect(true);
+                    speak(currentWord.sentence);
+                }
+            };
+
+            const handleSlotClick = (item) => {
+                if(isCorrect) return;
+                setUserOrder(userOrder.filter(i => i.id !== item.id));
+                setBank([...bank, item]);
+            };
+
+            const nextLevel = () => setCurrentQ((prev) => (prev + 1) % validWords.length);
+
+            if (!currentWord) return <div>Loading...</div>;
+
+            return (
+                <div className="w-full max-w-md mx-auto mt-4 flex flex-col h-[calc(100vh-180px)]">
+                    <ProgressBar current={currentQ + 1} total={validWords.length} label="Sentence" />
+                    
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-amber-400 mb-4">
+                        <div className="text-lg font-bold text-gray-800 mb-1">{currentWord.en}</div>
+                         <div className="text-sm text-gray-500">{currentWord.ru}</div>
+                        <div className="text-xs text-amber-500 mt-2 font-bold uppercase">Build the sentence</div>
+                    </div>
+
+                    <div className={`flex-grow bg-amber-50 rounded-2xl p-4 border-2 border-dashed transition-colors flex content-start flex-wrap gap-2
+                        ${isCorrect ? 'border-green-400 bg-green-50' : 'border-amber-300'}`}>
+                        
+                        {userOrder.length === 0 && !isCorrect && (
+                            <div className="w-full text-center text-amber-300 mt-10 font-bold text-sm">Tap words below</div>
+                        )}
+
+                        {userOrder.map((item) => (
+                            <button key={item.id} onClick={() => handleSlotClick(item)} className="zh-text bg-white px-3 py-2 rounded-lg shadow-sm text-lg border-b-2 border-gray-200 animate-pop font-bold text-gray-700">
+                                {item.text}
+                            </button>
+                        ))}
+                    </div>
+
+                    {isCorrect && (
+                        <div className="animate-pop my-4 p-4 bg-green-100 rounded-xl border border-green-300 text-center shadow-lg">
+                            <h3 className="text-green-800 font-bold text-xl mb-1">Correct! 🎉</h3>
+                            <button onClick={nextLevel} className="bg-green-600 text-white px-8 py-2 rounded-full font-bold shadow hover:bg-green-700 mt-2">Next</button>
+                        </div>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                        {bank.map(item => (
+                            <button key={item.id} onClick={() => handleBankClick(item)} className="zh-text bg-white px-4 py-3 rounded-xl shadow border border-amber-100 hover:bg-amber-50 text-lg font-bold text-gray-800">
+                                {item.text}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // 4. TYPE IT MODE
+        const TypeItMode = ({ words }) => {
+            const [index, setIndex] = useState(0);
+            const [input, setInput] = useState('');
+            const [status, setStatus] = useState('typing'); // typing, correct, wrong
+
+            const word = words[index];
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (input.trim() === word.hanzi) {
+                    setStatus('correct');
+                    speak(word.hanzi);
+                } else {
+                    setStatus('wrong');
+                    speak('Try again');
+                }
+            };
+
+            const next = () => {
+                setIndex((prev) => (prev + 1) % words.length);
+                setInput('');
+                setStatus('typing');
+            };
+
+            return (
+                <div className="w-full max-w-sm mx-auto mt-10 text-center">
+                     <div className="bg-white p-8 rounded-3xl shadow-lg border border-amber-100 mb-8 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-amber-400"></div>
+                        <h2 className="text-3xl font-bold text-gray-800 mb-2">{word.en}</h2>
+                        <p className="text-gray-400 font-medium">{word.ru}</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit}>
+                        <input 
+                            type="text" 
+                            value={input}
+                            onChange={(e) => { setInput(e.target.value); setStatus('typing'); }}
+                            placeholder="Type Hanzi..."
+                            className={`zh-text w-full p-4 text-center text-4xl rounded-2xl border-2 outline-none transition shadow-inner
+                                ${status === 'correct' ? 'border-green-500 bg-green-50 text-green-900' : 'border-gray-200 focus:border-amber-400'}
+                                ${status === 'wrong' ? 'border-red-400 bg-red-50' : ''}
+                            `}
+                        />
+                        {status === 'correct' && (
+                            <div className="mt-6 animate-pop">
+                                <div className="text-green-600 font-bold mb-3 text-lg">{word.pinyin}</div>
+                                <button type="button" onClick={next} className="bg-amber-500 text-white px-10 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition">Next</button>
+                            </div>
+                        )}
+                         {status === 'wrong' && <div className="mt-4 text-red-500 font-bold animate-pulse">Answer: {word.hanzi}</div>}
+                         {status === 'typing' && <button type="submit" className="mt-6 text-amber-400 font-bold text-sm tracking-wider uppercase">Press Enter to Check</button>}
+                    </form>
+                </div>
+            );
+        };
+
+        // 5. LIST VIEW MODE
+        const ListView = ({ words }) => (
+            <div className="w-full max-w-md mx-auto mt-2 pb-20">
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-amber-100">
+                    <div className="bg-amber-50 px-4 py-3 border-b border-amber-100 flex justify-between items-center sticky top-0">
+                         <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">{words.length} Words</span>
+                         <span className="text-[10px] text-gray-400 font-bold bg-white px-2 py-1 rounded-full border border-gray-100">Tap row to listen</span>
+                    </div>
+                    <div className="divide-y divide-gray-50 max-h-[70vh] overflow-y-auto no-scrollbar">
+                        {words.map(w => (
+                            <div 
+                                key={w.id} 
+                                onClick={() => speak(w.hanzi)}
+                                className="p-4 hover:bg-amber-50 transition-colors cursor-pointer flex justify-between items-center group"
+                            >
+                                <div>
+                                    <div className="flex items-baseline gap-2">
+                                        <div className="zh-text text-xl font-bold text-gray-800 group-hover:text-amber-600 transition-colors">{w.hanzi}</div>
+                                        <div className="text-xs text-gray-400 font-mono">{w.pinyin}</div>
+                                    </div>
+                                </div>
+                                <div className="text-right max-w-[50%]">
+                                    <div className="text-sm font-bold text-gray-700 leading-tight">{w.en}</div>
+                                    <div className="text-xs text-gray-400 mt-0.5">{w.ru}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
-    };
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-</script>
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
+            const [currentDeckId, setCurrentDeckId] = useState('L01-L04');
+            const [mode, setMode] = useState('flashcard');
+            const [mastery, setMastery] = useState({});
+            const [showDeckMenu, setShowDeckMenu] = useState(false);
+
+            // Load progress
+            useEffect(() => {
+                const saved = localStorage.getItem('hsk1_mastery');
+                if (saved) setMastery(JSON.parse(saved));
+            }, []);
+
+            const updateMastery = (id, score) => {
+                const newMastery = { ...mastery, [id]: (mastery[id] || 0) + score };
+                setMastery(newMastery);
+                localStorage.setItem('hsk1_mastery', JSON.stringify(newMastery));
+            };
+
+            const resetProgress = () => {
+                if(confirm("Reset all progress?")) {
+                    setMastery({});
+                    localStorage.removeItem('hsk1_mastery');
+                }
+            };
+
+            // Filter Words based on Deck
+            const activeWords = useMemo(() => {
+                const deckConfig = DECKS.find(d => d.id === currentDeckId);
+                if (deckConfig.range === 'ALL') return RAW_DATA;
+                return RAW_DATA.filter(w => deckConfig.range.includes(w.lesson));
+            }, [currentDeckId]);
+
+            const currentDeckLabel = DECKS.find(d => d.id === currentDeckId).label;
+
+            const NavBtn = ({ id, icon, label }) => (
+                <button 
+                    onClick={() => setMode(id)} 
+                    className={`flex flex-col items-center gap-1 p-2 transition-all ${mode === id ? 'text-amber-600' : 'text-gray-300 hover:text-amber-400'}`}
+                >
+                    <i className={`ph-fill ${icon} text-2xl ${mode === id ? 'scale-110' : ''}`}></i>
+                    <span className="text-[10px] font-bold uppercase">{label}</span>
+                </button>
+            );
+
+            return (
+                <div className="min-h-screen flex flex-col bg-amber-50 pb-24 relative overflow-hidden">
+                    
+                    {/* Header */}
+                    <header className="bg-white shadow-sm sticky top-0 z-20 px-4 py-3 flex justify-between items-center rounded-b-2xl">
+                        <div className="flex items-center gap-2 text-amber-600">
+                            <div className="w-12 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                                <span className="font-extrabold text-sm">HSK2</span>
+                            </div>
+                            <div>
+                                <h1 className="font-bold text-gray-800 leading-tight">Word Master</h1>
+                                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">{currentDeckLabel}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                             <button onClick={resetProgress} className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center">
+                                <i className="ph-bold ph-trash"></i>
+                            </button>
+                            <button onClick={() => setShowDeckMenu(!showDeckMenu)} className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shadow-sm active:scale-95 transition">
+                                <i className="ph-bold ph-folders"></i>
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Deck Menu Overlay */}
+                    {showDeckMenu && (
+                        <div className="absolute top-16 right-4 z-30 bg-white rounded-2xl shadow-xl border border-amber-100 p-2 w-48 animate-pop origin-top-right">
+                            <div className="text-xs font-bold text-gray-400 px-3 py-2 uppercase">Select Deck</div>
+                            {DECKS.map(deck => (
+                                <button 
+                                    key={deck.id}
+                                    onClick={() => { setCurrentDeckId(deck.id); setShowDeckMenu(false); }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold mb-1 transition ${currentDeckId === deck.id ? 'bg-amber-100 text-amber-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                    {deck.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Content */}
+                    <main className="flex-grow px-4 py-6 relative z-10">
+                        {mode === 'flashcard' && <FlashcardMode words={activeWords} onUpdateMastery={updateMastery} />}
+                        {mode === 'quiz' && <QuizMode words={activeWords} />}
+                        {mode === 'typeit' && <TypeItMode words={activeWords} />}
+                        {mode === 'sentence' && <SentenceBuilder words={activeWords} />}
+                        {mode === 'list' && <ListView words={activeWords} />}
+                    </main>
+
+                    {/* Bottom Nav */}
+                    <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-amber-100 pb-safe px-2 py-2 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 rounded-t-3xl">
+                        <NavBtn id="flashcard" icon="ph-cards" label="Cards" />
+                        <NavBtn id="list" icon="ph-list-dashes" label="List" />
+                        <NavBtn id="quiz" icon="ph-question" label="Quiz" />
+                        <NavBtn id="sentence" icon="ph-squares-four" label="Build" />
+                        <NavBtn id="typeit" icon="ph-keyboard" label="Type" />
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
