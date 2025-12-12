@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSK2 Word Master</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #fef3c7; /* Amber-50 */
+            overscroll-behavior: none;
+        }
+        .zh-text {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        .card-perspective {
+            perspective: 1000px;
+        }
+        .card-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .card-flipped {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            backface-visibility: hidden;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop {
+            animation: pop 0.2s ease-in-out;
+        }
+        /* Hide scrollbar for clean UI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // --- DATA ---
+    // Paste your FULL HSK2 vocabulary list here in this same structure.
+    // Each item:
+    // { id: number, lesson: "L01"..."L15", hanzi: "...", pinyin: "...", en: "...", ru: "...", sentence: "...", chunks: ["...", "..."] }
+    const RAW_DATA = [
+        // EXAMPLE FORMAT (DELETE THESE EXAMPLES AND PASTE YOUR REAL HSK2 DATA)
+        // L01
+        // { id: 20101, lesson: "L01", hanzi: "正在", pinyin: "zhèngzài", en: "in the middle of (doing)", ru: "в процессе (делания)", sentence: "我正在吃饭。", chunks: ["我", "正在", "吃饭"] },
+        // ...
+        // Make sure:
+        // - lesson values are "L01" ... "L15"
+        // - All HSK2 words are included once, in the correct lesson
+        // - Sentence + chunks are provided for Sentence Builder mode
+    ];
+
+    // --- DECK CONFIGURATION (HSK2) ---
+    const HSK2_VOCAB = [
+            // L01
+            { id: 1, lesson: "L01", hanzi: "觉得", pinyin: "juéde", en: "to think, to feel", ru: "думать, чувствовать", sentence: "你觉得中国菜怎么样？", chunks: ["你", "觉得", "中国菜", "怎么样"] },
+            { id: 2, lesson: "L01", hanzi: "旅游", pinyin: "lǚyóu", en: "to travel", ru: "путешествовать", sentence: "我明天出发去北京旅游。", chunks: ["我", "明天", "出发", "去北京", "旅游"] },
+            { id: 3, lesson: "L01", hanzi: "它", pinyin: "tā", en: "it", ru: "оно", sentence: "它是我朋友的小猫。", chunks: ["它是", "我朋友的", "小猫"] },
+            { id: 4, lesson: "L01", hanzi: "踢足球", pinyin: "tī zúqiú", en: "to play football", ru: "играть в футбол", sentence: "明天我们一起去踢足球吧。", chunks: ["明天", "我们", "一起去", "踢足球", "吧"] },
+            { id: 5, lesson: "L01", hanzi: "为什么", pinyin: "wèi shénme", en: "why", ru: "почему", sentence: "你为什么不开车去呢？", chunks: ["你", "为什么", "不开车", "去呢"] },
+            { id: 6, lesson: "L01", hanzi: "新", pinyin: "xīn", en: "new", ru: "новый", sentence: "我的书是一本新书，不是这本。", chunks: ["我的书", "是", "一本", "新书"] },
+            { id: 7, lesson: "L01", hanzi: "眼睛", pinyin: "yǎnjīng", en: "eye", ru: "глаз", sentence: "它的眼睛很漂亮。", chunks: ["它的", "眼睛", "很", "漂亮"] },
+            { id: 8, lesson: "L01", hanzi: "要", pinyin: "yào", en: "to want to, will", ru: "хотеть; собираться", sentence: "明天我要去火车站买票。", chunks: ["明天", "我要去", "火车站", "买票"] },
+            { id: 9, lesson: "L01", hanzi: "也", pinyin: "yě", en: "also, too", ru: "тоже", sentence: "今天的天气不冷也不热。", chunks: ["今天的", "天气", "不冷", "也", "不热"] },
+            { id: 10, lesson: "L01", hanzi: "一起", pinyin: "yìqǐ", en: "together", ru: "вместе", sentence: "明天早上我们一起去跑步吧。", chunks: ["明天早上", "我们", "一起去", "跑步吧"] },
+            { id: 11, lesson: "L01", hanzi: "运动", pinyin: "yùndòng", en: "sports, exercise", ru: "спорт; заниматься спортом", sentence: "他每天都运动一个小时。", chunks: ["他", "每天都", "运动", "一个小时"] },
+            { id: 12, lesson: "L01", hanzi: "最", pinyin: "zuì", en: "most", ru: "самый", sentence: "秋天去北京旅游最好。", chunks: ["秋天", "去北京", "旅游", "最好"] },
+
+            // L02
+            { id: 13, lesson: "L02", hanzi: "出", pinyin: "chū", en: "to go out", ru: "выходить", sentence: "我要出去跑步。", chunks: ["我要", "出去", "跑步"] },
+            { id: 14, lesson: "L02", hanzi: "高", pinyin: "gāo", en: "tall, high", ru: "высокий", sentence: "他个子很高。", chunks: ["他", "个子", "很高"] },
+            { id: 15, lesson: "L02", hanzi: "忙", pinyin: "máng", en: "busy", ru: "занятый", sentence: "你最近忙吗？", chunks: ["你", "最近", "忙吗"] },
+            { id: 16, lesson: "L02", hanzi: "每", pinyin: "měi", en: "every", ru: "каждый", sentence: "我每天都出去跑步。", chunks: ["我", "每天都", "出去", "跑步"] },
+            { id: 17, lesson: "L02", hanzi: "跑步", pinyin: "pǎobù", en: "to run, to jog", ru: "бегать", sentence: "跑步对身体有好处。", chunks: ["跑步", "对身体", "有", "好处"] },
+            { id: 18, lesson: "L02", hanzi: "起床", pinyin: "qǐchuáng", en: "to get up", ru: "вставать с кровати", sentence: "我每天早上六点起床。", chunks: ["我", "每天早上", "六点", "起床"] },
+            { id: 19, lesson: "L02", hanzi: "身体", pinyin: "shēntǐ", en: "body, health", ru: "тело; здоровье", sentence: "你最近身体怎么样？", chunks: ["你", "最近", "身体", "怎么样"] },
+            { id: 20, lesson: "L02", hanzi: "生病", pinyin: "shēngbìng", en: "to get sick", ru: "заболеть", sentence: "他今天生病了，不能来上班了。", chunks: ["他", "今天", "生病了", "不能来", "上班了"] },
+            { id: 21, lesson: "L02", hanzi: "时间", pinyin: "shíjiān", en: "time", ru: "время", sentence: "星期六你有时间吗？", chunks: ["星期六", "你", "有", "时间吗"] },
+            { id: 22, lesson: "L02", hanzi: "休息", pinyin: "xiūxī", en: "to rest", ru: "отдыхать", sentence: "周末我要在家好好休息。", chunks: ["周末", "我要", "在家", "好好", "休息"] },
+            { id: 23, lesson: "L02", hanzi: "药", pinyin: "yào", en: "medicine", ru: "лекарство", sentence: "生病了要吃药。", chunks: ["生病了", "要", "吃药"] },
+            { id: 24, lesson: "L02", hanzi: "早上", pinyin: "zǎoshang", en: "morning", ru: "утро", sentence: "你早上几点吃早饭？", chunks: ["你", "早上", "几点", "吃早饭"] },
+            { id: 25, lesson: "L02", hanzi: "知道", pinyin: "zhīdào", en: "to know", ru: "знать", sentence: "我不知道这个词是什么意思。", chunks: ["我不", "知道", "这个词", "是", "什么意思"] },
+
+            // L03
+            { id: 26, lesson: "L03", hanzi: "报纸", pinyin: "bàozhǐ", en: "newspaper", ru: "газета", sentence: "爸爸在看报纸。", chunks: ["爸爸", "在看", "报纸"] },
+            { id: 27, lesson: "L03", hanzi: "房间", pinyin: "fángjiān", en: "room", ru: "комната", sentence: "你住几号房间？", chunks: ["你住", "几号", "房间"] },
+            { id: 28, lesson: "L03", hanzi: "红", pinyin: "hóng", en: "red", ru: "красный", sentence: "中国人喜欢红色。", chunks: ["中国人", "喜欢", "红色"] },
+            { id: 29, lesson: "L03", hanzi: "牛奶", pinyin: "niúnǎi", en: "milk", ru: "молоко", sentence: "我每天要喝一杯牛奶。", chunks: ["我", "每天要", "喝", "一杯", "牛奶"] },
+            { id: 30, lesson: "L03", hanzi: "旁边", pinyin: "pángbiān", en: "beside", ru: "рядом", sentence: "公交车站在学校大门旁边。", chunks: ["公交车站", "在", "学校大门", "旁边"] },
+            { id: 31, lesson: "L03", hanzi: "千", pinyin: "qiān", en: "thousand", ru: "тысяча", sentence: "这只手表三千多块钱。", chunks: ["这只手表", "三千多", "块钱"] },
+            { id: 32, lesson: "L03", hanzi: "手表", pinyin: "shǒubiǎo", en: "watch", ru: "наручные часы", sentence: "这支手表是送你的生日礼物。", chunks: ["这支手表", "是", "送你的", "生日礼物"] },
+            { id: 33, lesson: "L03", hanzi: "送", pinyin: "sòng", en: "to give (gift), to send", ru: "дарить; провожать", sentence: "你送她什么礼物？", chunks: ["你", "送她", "什么", "礼物"] },
+            { id: 34, lesson: "L03", hanzi: "颜色", pinyin: "yánsè", en: "color", ru: "цвет", sentence: "红色是我最喜欢的颜色。", chunks: ["红色", "是", "我最喜欢的", "颜色"] },
+            { id: 35, lesson: "L03", hanzi: "一下", pinyin: "yíxià", en: "a little bit, once", ru: "немного; разок", sentence: "我们休息一下吧。", chunks: ["我们", "休息", "一下", "吧"] },
+            { id: 36, lesson: "L03", hanzi: "丈夫", pinyin: "zhàngfu", en: "husband", ru: "муж", sentence: "那个人是她的丈夫。", chunks: ["那个人", "是", "她的", "丈夫"] },
+            { id: 37, lesson: "L03", hanzi: "真", pinyin: "zhēn", en: "really", ru: "действительно", sentence: "你的汉语说得真好。", chunks: ["你的", "汉语", "说得", "真好"] },
+            { id: 38, lesson: "L03", hanzi: "左边", pinyin: "zuǒbiān", en: "left side", ru: "слева", sentence: "他左边那个人你认识吗？", chunks: ["他", "左边", "那个人", "你认识吗"] },
+
+            // L04
+            { id: 39, lesson: "L04", hanzi: "非常", pinyin: "fēicháng", en: "very, extremely", ru: "чрезвычайно", sentence: "他非常喜欢中国。", chunks: ["他", "非常", "喜欢", "中国"] },
+            { id: 40, lesson: "L04", hanzi: "给", pinyin: "gěi", en: "to, for, to give", ru: "давать; для", sentence: "这本书是送给你的。", chunks: ["这本书", "是", "送给", "你的"] },
+            { id: 41, lesson: "L04", hanzi: "介绍", pinyin: "jièshào", en: "to introduce", ru: "представлять", sentence: "请你介绍一下自己。", chunks: ["请你", "介绍", "一下", "自己"] },
+            { id: 42, lesson: "L04", hanzi: "开始", pinyin: "kāishǐ", en: "to start", ru: "начинать", sentence: "我是去年开始学汉语的。", chunks: ["我是", "去年", "开始", "学汉语的"] },
+            { id: 43, lesson: "L04", hanzi: "快乐", pinyin: "kuài lè", en: "happy", ru: "счастливый", sentence: "生日快乐。", chunks: ["生日", "快乐"] },
+            { id: 44, lesson: "L04", hanzi: "两", pinyin: "liǎng", en: "two", ru: "два", sentence: "我学了两年汉语。", chunks: ["我", "学了", "两年", "汉语"] },
+            { id: 45, lesson: "L04", hanzi: "生日", pinyin: "shēngrì", en: "birthday", ru: "день рождения", sentence: "明天是他的生日。", chunks: ["明天", "是", "他的", "生日"] },
+            { id: 46, lesson: "L04", hanzi: "晚上", pinyin: "wǎnshang", en: "evening", ru: "вечер", sentence: "你晚上和我们一起去吃饭吗？", chunks: ["你", "晚上", "和我们", "一起去", "吃饭吗"] },
+            { id: 47, lesson: "L04", hanzi: "问", pinyin: "wèn", en: "to ask", ru: "спрашивать", sentence: "我想问你一个问题。", chunks: ["我想", "问你", "一个", "问题"] },
+            { id: 48, lesson: "L04", hanzi: "已经", pinyin: "yǐjīng", en: "already", ru: "уже", sentence: "我已经学了两年的汉语了。", chunks: ["我", "已经", "学了", "两年的", "汉语了"] },
+            { id: 49, lesson: "L04", hanzi: "长", pinyin: "cháng", en: "long", ru: "длинный", sentence: "你来中国多长时间了？", chunks: ["你", "来中国", "多长", "时间了"] },
+            { id: 50, lesson: "L04", hanzi: "帮助", pinyin: "bāngzhù", en: "to help", ru: "помогать", sentence: "看电视对学汉语有帮助。", chunks: ["看电视", "对", "学汉语", "有帮助"] },
+
+            // L05
+            { id: 51, lesson: "L05", hanzi: "吧", pinyin: "bɑ", en: "particle (suggestion)", ru: "частица ba", sentence: "我们走吧。", chunks: ["我们", "走", "吧"] },
+            { id: 52, lesson: "L05", hanzi: "对", pinyin: "duì", en: "correct, to", ru: "правильный; к", sentence: "跑步对身体很好。", chunks: ["跑步", "对", "身体", "很好"] },
+            { id: 53, lesson: "L05", hanzi: "还", pinyin: "hái", en: "still, also", ru: "еще; всё же", sentence: "今天的天气还可以。", chunks: ["今天的", "天气", "还", "可以"] },
+            { id: 54, lesson: "L05", hanzi: "件", pinyin: "jiàn", en: "measure word (clothes)", ru: "сч. слово (одежда)", sentence: "我买了两件衣服。", chunks: ["我", "买了", "两件", "衣服"] },
+            { id: 55, lesson: "L05", hanzi: "就", pinyin: "jiù", en: "just, then", ru: "именно; тогда", sentence: "你不想去就不去吧。", chunks: ["你", "不想去", "就", "不去吧"] },
+            { id: 56, lesson: "L05", hanzi: "咖啡", pinyin: "kāfēi", en: "coffee", ru: "кофе", sentence: "我每天要喝一杯咖啡。", chunks: ["我", "每天", "要喝", "一杯", "咖啡"] },
+            { id: 57, lesson: "L05", hanzi: "考试", pinyin: "kǎoshì", en: "exam", ru: "экзамен", sentence: "明天要考试了。", chunks: ["明天", "要", "考试了"] },
+            { id: 58, lesson: "L05", hanzi: "可以", pinyin: "kěyǐ", en: "can, okay", ru: "можно; неплохо", sentence: "他的汉语说得还可以。", chunks: ["他的", "汉语", "说得", "还可以"] },
+            { id: 59, lesson: "L05", hanzi: "意思", pinyin: "yìsi", en: "meaning", ru: "смысл; значение", sentence: "这个词是什么意思？", chunks: ["这个词", "是", "什么", "意思"] },
+            { id: 60, lesson: "L05", hanzi: "鱼", pinyin: "yú", en: "fish", ru: "рыба", sentence: "我非常喜欢吃鱼。", chunks: ["我", "非常", "喜欢", "吃鱼"] },
+            { id: 61, lesson: "L05", hanzi: "准备", pinyin: "zhǔnbèi", en: "to prepare", ru: "готовиться", sentence: "我准备出去吃。", chunks: ["我", "准备", "出去", "吃"] },
+
+            // L06
+            { id: 62, lesson: "L06", hanzi: "打篮球", pinyin: "dǎ lánqiú", en: "play basketball", ru: "играть в баскетбол", sentence: "我们昨天没去打篮球。", chunks: ["我们", "昨天", "没去", "打篮球"] },
+            { id: 63, lesson: "L06", hanzi: "好吃", pinyin: "hǎochī", en: "delicious", ru: "вкусный", sentence: "中国菜非常好吃。", chunks: ["中国菜", "非常", "好吃"] },
+            { id: 64, lesson: "L06", hanzi: "姐姐", pinyin: "jiějie", en: "older sister", ru: "старшая сестра", sentence: "他有两个姐姐。", chunks: ["他", "有", "两个", "姐姐"] },
+            { id: 65, lesson: "L06", hanzi: "门", pinyin: "mén", en: "door", ru: "дверь", sentence: "门开着呢，请进来吧。", chunks: ["门", "开着呢", "请", "进来吧"] },
+            { id: 66, lesson: "L06", hanzi: "面条", pinyin: "miàntiáo", en: "noodles", ru: "лапша", sentence: "他非常喜欢吃面条。", chunks: ["他", "非常", "喜欢", "吃面条"] },
+            { id: 67, lesson: "L06", hanzi: "所以", pinyin: "suǒyǐ", en: "so", ru: "поэтому", sentence: "衣服贵，所以我没买。", chunks: ["衣服贵", "所以", "我", "没买"] },
+            { id: 68, lesson: "L06", hanzi: "外", pinyin: "wài", en: "outside", ru: "снаружи", sentence: "他在门外等你呢。", chunks: ["他", "在", "门外", "等你呢"] },
+            { id: 69, lesson: "L06", hanzi: "羊肉", pinyin: "yángròu", en: "mutton", ru: "баранина", sentence: "这家餐厅的羊肉很好吃。", chunks: ["这家餐厅的", "羊肉", "很", "好吃"] },
+            { id: 70, lesson: "L06", hanzi: "因为", pinyin: "yīnwèi", en: "because", ru: "потому что", sentence: "因为我每天运动，所以身体好。", chunks: ["因为", "我每天", "运动", "所以", "身体好"] },
+            { id: 71, lesson: "L06", hanzi: "游泳", pinyin: "yóuyǒng", en: "to swim", ru: "плавать", sentence: "你姐姐会不会游泳？", chunks: ["你姐姐", "会不会", "游泳"] },
+
+            // L07
+            { id: 72, lesson: "L07", hanzi: "到", pinyin: "dào", en: "to arrive", ru: "прибывать", sentence: "你几点到学校？", chunks: ["你", "几点", "到", "学校"] },
+            { id: 73, lesson: "L07", hanzi: "公交车", pinyin: "gōngjiāochē", en: "bus", ru: "автобус", sentence: "我坐公交车去学校。", chunks: ["我", "坐", "公交车", "去学校"] },
+            { id: 74, lesson: "L07", hanzi: "公司", pinyin: "gōngsī", en: "company", ru: "компания", sentence: "我家离公司很远。", chunks: ["我家", "离", "公司", "很远"] },
+            { id: 75, lesson: "L07", hanzi: "机场", pinyin: "jīchǎng", en: "airport", ru: "аэропорт", sentence: "我现在出发去机场。", chunks: ["我现在", "出发", "去", "机场"] },
+            { id: 76, lesson: "L07", hanzi: "教室", pinyin: "jiāoshì", en: "classroom", ru: "класс (помещение)", sentence: "我们的教室在二楼。", chunks: ["我们的", "教室", "在", "二楼"] },
+            { id: 77, lesson: "L07", hanzi: "快", pinyin: "kuài", en: "fast", ru: "быстрый", sentence: "开车比坐车快。", chunks: ["开车", "比", "坐车", "快"] },
+            { id: 78, lesson: "L07", hanzi: "离", pinyin: "lí", en: "from (distance)", ru: "от (расстояние)", sentence: "学校离你家远吗？", chunks: ["学校", "离", "你家", "远吗"] },
+            { id: 79, lesson: "L07", hanzi: "慢", pinyin: "màn", en: "slow", ru: "медленный", sentence: "坐公交车太慢了。", chunks: ["坐", "公交车", "太", "慢了"] },
+            { id: 80, lesson: "L07", hanzi: "小时", pinyin: "xiǎoshí", en: "hour", ru: "час", sentence: "开车要一个小时。", chunks: ["开车", "要", "一个", "小时"] },
+            { id: 81, lesson: "L07", hanzi: "远", pinyin: "yuǎn", en: "far", ru: "далекий", sentence: "公交车站离这儿有点远。", chunks: ["公交车站", "离这儿", "有点", "远"] },
+            { id: 82, lesson: "L07", hanzi: "走", pinyin: "zǒu", en: "to walk", ru: "идти", sentence: "往前走就到学校了。", chunks: ["往前走", "就", "到", "学校了"] },
+            { id: 83, lesson: "L07", hanzi: "路", pinyin: "lù", en: "road", ru: "дорога", sentence: "今天路上车太多了。", chunks: ["今天", "路上", "车", "太多了"] },
+
+            // L08
+            { id: 84, lesson: "L08", hanzi: "白", pinyin: "bái", en: "white", ru: "белый", sentence: "我喜欢白色的衣服。", chunks: ["我", "喜欢", "白色的", "衣服"] },
+            { id: 85, lesson: "L08", hanzi: "等", pinyin: "děng", en: "to wait", ru: "ждать", sentence: "请等我五分钟。", chunks: ["请", "等我", "五分钟"] },
+            { id: 86, lesson: "L08", hanzi: "服务员", pinyin: "fúwùyuán", en: "waiter", ru: "официант", sentence: "服务员，请给我一杯水。", chunks: ["服务员", "请", "给我", "一杯水"] },
+            { id: 87, lesson: "L08", hanzi: "告诉", pinyin: "gàosù", en: "to tell", ru: "сказать; сообщить", sentence: "让我想想再告诉你。", chunks: ["让我", "想想", "再", "告诉你"] },
+            { id: 88, lesson: "L08", hanzi: "贵", pinyin: "guì", en: "expensive", ru: "дорогой", sentence: "这件衣服有点儿贵。", chunks: ["这件", "衣服", "有点儿", "贵"] },
+            { id: 89, lesson: "L08", hanzi: "黑", pinyin: "hēi", en: "black", ru: "черный", sentence: "我不喜欢黑色。", chunks: ["我", "不喜欢", "黑色"] },
+            { id: 90, lesson: "L08", hanzi: "让", pinyin: "ràng", en: "to let", ru: "позволять", sentence: "让我想想。", chunks: ["让", "我", "想想"] },
+            { id: 91, lesson: "L08", hanzi: "事情", pinyin: "shìqíng", en: "matter, thing", ru: "дело", sentence: "最近我的事情有点儿多。", chunks: ["最近", "我的", "事情", "有点儿多"] },
+            { id: 92, lesson: "L08", hanzi: "再", pinyin: "zài", en: "again", ru: "снова", sentence: "让我再想一想。", chunks: ["让我", "再", "想一想"] },
+            { id: 93, lesson: "L08", hanzi: "找", pinyin: "zhǎo", en: "to find, look for", ru: "искать", sentence: "我想找时间去看看他。", chunks: ["我想", "找时间", "去", "看看他"] },
+
+            // L09
+            { id: 94, lesson: "L09", hanzi: "从", pinyin: "cóng", en: "from", ru: "от; из", sentence: "从下个星期一开始上班。", chunks: ["从", "下个", "星期一", "开始上班"] },
+            { id: 95, lesson: "L09", hanzi: "错", pinyin: "cuò", en: "wrong", ru: "неправильный", sentence: "你打错电话了。", chunks: ["你", "打错", "电话", "了"] },
+            { id: 96, lesson: "L09", hanzi: "第一", pinyin: "dì yī", en: "first", ru: "первый", sentence: "这是我第一次来中国。", chunks: ["这是", "我", "第一次", "来中国"] },
+            { id: 97, lesson: "L09", hanzi: "懂", pinyin: "dǒng", en: "to understand", ru: "понимать", sentence: "你听懂了吗？", chunks: ["你", "听懂", "了吗"] },
+            { id: 98, lesson: "L09", hanzi: "上班", pinyin: "shàngbān", en: "go to work", ru: "идти на работу", sentence: "我每天七点半去上班。", chunks: ["我", "每天", "七点半", "去上班"] },
+            { id: 99, lesson: "L09", hanzi: "题", pinyin: "tí", en: "question", ru: "вопрос (в тесте)", sentence: "这道题太难了。", chunks: ["这道题", "太", "难了"] },
+            { id: 100, lesson: "L09", hanzi: "跳舞", pinyin: "tiàowǔ", en: "to dance", ru: "танцевать", sentence: "我妈妈非常喜欢跳舞。", chunks: ["我妈妈", "非常", "喜欢", "跳舞"] },
+            { id: 101, lesson: "L09", hanzi: "完", pinyin: "wán", en: "to finish", ru: "заканчивать", sentence: "我没有做完。", chunks: ["我", "没有", "做完"] },
+            { id: 102, lesson: "L09", hanzi: "问题", pinyin: "wèntí", en: "problem", ru: "проблема", sentence: "这个问题你可以去问老师。", chunks: ["这个问题", "你可以", "去", "问老师"] },
+            { id: 103, lesson: "L09", hanzi: "希望", pinyin: "xīwàng", en: "to hope", ru: "надеяться", sentence: "我希望你可以帮助我。", chunks: ["我", "希望", "你可以", "帮助我"] },
+
+            // L10
+            { id: 104, lesson: "L10", hanzi: "别", pinyin: "bié", en: "don't", ru: "не (запрет)", sentence: "别看电视了，做作业吧。", chunks: ["别", "看电视了", "做", "作业吧"] },
+            { id: 105, lesson: "L10", hanzi: "哥哥", pinyin: "gēge", en: "older brother", ru: "старший брат", sentence: "这是我哥哥。", chunks: ["这是", "我", "哥哥"] },
+            { id: 106, lesson: "L10", hanzi: "鸡蛋", pinyin: "jīdàn", en: "egg", ru: "яйцо", sentence: "他不喜欢吃鸡蛋。", chunks: ["他", "不喜欢", "吃", "鸡蛋"] },
+            { id: 107, lesson: "L10", hanzi: "课", pinyin: "kè", en: "class", ru: "урок", sentence: "今天要上汉语课。", chunks: ["今天", "要上", "汉语课"] },
+            { id: 108, lesson: "L10", hanzi: "手机", pinyin: "shǒujī", en: "mobile phone", ru: "мобильный телефон", sentence: "你的手机号码是多少？", chunks: ["你的", "手机号码", "是", "多少"] },
+            { id: 109, lesson: "L10", hanzi: "西瓜", pinyin: "xīguā", en: "watermelon", ru: "арбуз", sentence: "我买了一个西瓜。", chunks: ["我", "买了", "一个", "西瓜"] },
+            { id: 110, lesson: "L10", hanzi: "洗", pinyin: "xǐ", en: "to wash", ru: "мыть", sentence: "那件衣服我洗了。", chunks: ["那件", "衣服", "我", "洗了"] },
+            { id: 111, lesson: "L10", hanzi: "正在", pinyin: "zhèngzài", en: "in process of", ru: "в процессе (сейчас)", sentence: "妈妈正在做饭呢。", chunks: ["妈妈", "正在", "做饭", "呢"] },
+
+            // L11
+            { id: 112, lesson: "L11", hanzi: "比", pinyin: "bǐ", en: "than (comparison)", ru: "чем (сравнение)", sentence: "我哥哥比我高。", chunks: ["我哥哥", "比", "我", "高"] },
+            { id: 113, lesson: "L11", hanzi: "便宜", pinyin: "piányi", en: "cheap", ru: "дешевый", sentence: "这家餐厅比那家便宜。", chunks: ["这家", "餐厅", "比那家", "便宜"] },
+            { id: 114, lesson: "L11", hanzi: "唱歌", pinyin: "chànggē", en: "to sing", ru: "петь", sentence: "她很喜欢唱歌。", chunks: ["她", "很", "喜欢", "唱歌"] },
+            { id: 115, lesson: "L11", hanzi: "孩子", pinyin: "háizi", en: "child", ru: "ребенок", sentence: "他们有两个孩子。", chunks: ["他们", "有", "两个", "孩子"] },
+            { id: 116, lesson: "L11", hanzi: "可能", pinyin: "kěnéng", en: "maybe", ru: "возможно", sentence: "明天可能会下雨。", chunks: ["明天", "可能会", "下雨"] },
+            { id: 117, lesson: "L11", hanzi: "男", pinyin: "nán", en: "male", ru: "мужской", sentence: "她有男朋友吗？", chunks: ["她", "有", "男朋友", "吗"] },
+            { id: 118, lesson: "L11", hanzi: "女", pinyin: "nǚ", en: "female", ru: "женский", sentence: "她是我朋友，不是女朋友。", chunks: ["她", "是", "我朋友", "不是", "女朋友"] },
+            { id: 119, lesson: "L11", hanzi: "去年", pinyin: "qùnián", en: "last year", ru: "прошлый год", sentence: "我是去年来中国的。", chunks: ["我", "是", "去年", "来中国的"] },
+            { id: 120, lesson: "L11", hanzi: "说话", pinyin: "shuōhuà", en: "to speak", ru: "разговаривать", sentence: "他们俩一直在说话。", chunks: ["他们俩", "一直在", "说话"] },
+            { id: 121, lesson: "L11", hanzi: "姓", pinyin: "xìng", en: "surname", ru: "фамилия", sentence: "您姓什么？", chunks: ["您", "姓", "什么"] },
+            { id: 122, lesson: "L11", hanzi: "右边", pinyin: "yòubiān", en: "right side", ru: "справа", sentence: "右边那个人是我的妈妈。", chunks: ["右边", "那个人", "是", "我的妈妈"] },
+
+            // L12
+            { id: 123, lesson: "L12", hanzi: "穿", pinyin: "chuān", en: "to wear", ru: "носить", sentence: "今天冷，你多穿一点儿。", chunks: ["今天冷", "你", "多穿", "一点儿"] },
+            { id: 124, lesson: "L12", hanzi: "得", pinyin: "de", en: "particle (complement)", ru: "частица (de)", sentence: "你穿得太少了。", chunks: ["你", "穿得", "太少了"] },
+            { id: 125, lesson: "L12", hanzi: "弟弟", pinyin: "dìdi", en: "younger brother", ru: "младший брат", sentence: "我有一个弟弟。", chunks: ["我", "有", "一个", "弟弟"] },
+            { id: 126, lesson: "L12", hanzi: "近", pinyin: "jìn", en: "near", ru: "близко", sentence: "宾馆离这儿很近。", chunks: ["宾馆", "离这儿", "很近"] },
+            { id: 127, lesson: "L12", hanzi: "进", pinyin: "jìn", en: "to enter", ru: "входить", sentence: "你好，请进，请坐。", chunks: ["你好", "请进", "请坐"] },
+            { id: 128, lesson: "L12", hanzi: "零", pinyin: "líng", en: "zero", ru: "ноль", sentence: "今天零下10度。", chunks: ["今天", "零下", "10度"] },
+            { id: 129, lesson: "L12", hanzi: "妻子", pinyin: "qīzi", en: "wife", ru: "жена", sentence: "他的妻子比他小两岁。", chunks: ["他的", "妻子", "比他", "小两岁"] },
+            { id: 130, lesson: "L12", hanzi: "雪", pinyin: "xuě", en: "snow", ru: "снег", sentence: "今天下雪了。", chunks: ["今天", "下雪", "了"] },
+
+            // L13
+            { id: 131, lesson: "L13", hanzi: "宾馆", pinyin: "bīnguǎn", en: "hotel", ru: "гостиница", sentence: "最近的宾馆在哪儿？", chunks: ["最近的", "宾馆", "在", "哪儿"] },
+            { id: 132, lesson: "L13", hanzi: "铅笔", pinyin: "qiānbǐ", en: "pencil", ru: "карандаш", sentence: "那儿有一支铅笔。", chunks: ["那儿", "有", "一支", "铅笔"] },
+            { id: 133, lesson: "L13", hanzi: "往", pinyin: "wǎng", en: "towards", ru: "в направлении", sentence: "往前走就到了。", chunks: ["往", "前", "走", "就到了"] },
+            { id: 134, lesson: "L13", hanzi: "笑", pinyin: "xiào", en: "to laugh", ru: "смеяться", sentence: "她是一个很爱笑的女孩儿。", chunks: ["她是", "一个", "很爱笑的", "女孩儿"] },
+            { id: 135, lesson: "L13", hanzi: "着", pinyin: "zhe", en: "particle (aspect)", ru: "частица (продолж.)", sentence: "她拿着一本书。", chunks: ["她", "拿着", "一本", "书"] },
+
+            // L14
+            { id: 136, lesson: "L14", hanzi: "百", pinyin: "bǎi", en: "hundred", ru: "сто", sentence: "给你一百块钱。", chunks: ["给你", "一百", "块钱"] },
+            { id: 137, lesson: "L14", hanzi: "次", pinyin: "cì", en: "time (frequency)", ru: "раз", sentence: "他去过好几次中国。", chunks: ["他", "去过", "好几次", "中国"] },
+            { id: 138, lesson: "L14", hanzi: "但是", pinyin: "dànshì", en: "but", ru: "но", sentence: "汉字难，但是我喜欢。", chunks: ["汉字", "难", "但是", "我喜欢"] },
+            { id: 139, lesson: "L14", hanzi: "晴", pinyin: "qíng", en: "sunny", ru: "ясный", sentence: "今天是个大晴天。", chunks: ["今天", "是", "个", "大晴天"] },
+            { id: 140, lesson: "L14", hanzi: "虽然", pinyin: "suīrán", en: "although", ru: "хотя", sentence: "虽然是晴天，但是有点冷。", chunks: ["虽然", "是", "晴天", "但是", "有点冷"] },
+            { id: 141, lesson: "L14", hanzi: "玩儿", pinyin: "wánr", en: "to play", ru: "играть", sentence: "明天想去哪儿玩儿？", chunks: ["明天", "想去", "哪儿", "玩儿"] },
+
+            // L15
+            { id: 142, lesson: "L15", hanzi: "大家", pinyin: "dàjiā", en: "everyone", ru: "все", sentence: "谢谢大家对我的帮助。", chunks: ["谢谢", "大家", "对我的", "帮助"] },
+            { id: 143, lesson: "L15", hanzi: "火车站", pinyin: "huǒchēzhàn", en: "train station", ru: "вокзал", sentence: "我明天去火车站买票。", chunks: ["我", "明天", "去", "火车站", "买票"] },
+            { id: 144, lesson: "L15", hanzi: "妹妹", pinyin: "mèimei", en: "younger sister", ru: "младшая сестра", sentence: "他妹妹比他小三岁。", chunks: ["他妹妹", "比他", "小", "三岁"] },
+            { id: 145, lesson: "L15", hanzi: "票", pinyin: "piào", en: "ticket", ru: "билет", sentence: "我明天去火车站买票。", chunks: ["我", "明天", "去", "火车站", "买票"] },
+            { id: 146, lesson: "L15", hanzi: "日", pinyin: "rì", en: "day", ru: "день", sentence: "你的生日是几月几日？", chunks: ["你的", "生日", "是", "几月几日"] },
+            { id: 147, lesson: "L15", hanzi: "阴", pinyin: "yīn", en: "cloudy", ru: "пасмурный", sentence: "今天的天气有点阴。", chunks: ["今天的", "天气", "有点", "阴"] }
+        ];
+
+    // --- UTILS ---
+    const speak = (text, lang = 'zh-CN') => {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang;
+        utterance.rate = 0.8;
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const shuffleArray = (array) => {
+        const newArr = [...array];
+        for (let i = newArr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+        }
+        return newArr;
+    };
+
+    // --- COMPONENTS ---
+
+    const ProgressBar = ({ current, total, label }) => (
+        <div className="w-full bg-amber-200 rounded-full h-3 mb-4 relative overflow-hidden">
+            <div 
+                className="bg-amber-500 h-3 rounded-full transition-all duration-500" 
+                style={{ width: `${(total > 0 ? (current / total) : 0) * 100}%` }}
+            ></div>
+            <span className="absolute top-0 right-1 text-[8px] text-amber-900 font-bold leading-3">
+                {current}/{total}
+            </span>
+        </div>
+    );
+
+    // 1. FLASHCARD MODE
+    const FlashcardMode = ({ words, onUpdateMastery }) => {
+        const [index, setIndex] = useState(0);
+        const [flipped, setFlipped] = useState(false);
+        
+        // Reset when deck changes
+        useEffect(() => {
+            setIndex(0);
+            setFlipped(false);
+        }, [words]);
+
+        if (!words || words.length === 0) {
+            return <div className="text-center p-10 text-amber-500">Deck Empty</div>;
+        }
+        
+        const currentWord = words[index];
+
+        const handleNext = (score) => {
+            onUpdateMastery(currentWord.id, score);
+            setFlipped(false);
+            setTimeout(
+                () => setIndex((prev) => (prev + 1) % words.length),
+                200
+            );
+        };
+
+        useEffect(() => {
+            const handleKey = (e) => {
+                if (e.code === 'Space') { 
+                    e.preventDefault(); 
+                    setFlipped((p) => !p); 
+                }
+                if (e.key.toLowerCase() === 'k' && flipped) handleNext(1);
+                if (e.key.toLowerCase() === 'a' && flipped) handleNext(0);
+                if (e.key.toLowerCase() === 'v') speak(currentWord.hanzi);
+            };
+            window.addEventListener('keydown', handleKey);
+            return () => window.removeEventListener('keydown', handleKey);
+        }, [flipped, index, currentWord]);
+
+        return (
+            <div className="flex flex-col items-center w-full max-w-sm mx-auto mt-4">
+                <ProgressBar current={index + 1} total={words.length} label="Card" />
+                
+                <div 
+                    className="card-perspective w-full h-80 cursor-pointer group" 
+                    onClick={() => setFlipped(!flipped)}
+                >
+                    <div className={`card-inner w-full h-full relative rounded-2xl shadow-xl duration-500 ${flipped ? 'card-flipped' : ''}`}>
+                        {/* Front */}
+                        <div className="card-front absolute w-full h-full bg-white rounded-2xl flex flex-col items-center justify-center p-6 border-2 border-amber-100">
+                            <span className="text-xs text-amber-400 font-bold mb-2 uppercase tracking-widest">
+                                {currentWord.lesson}
+                            </span>
+                            <h1 className="zh-text text-6xl text-gray-800 font-bold mb-4">
+                                {currentWord.hanzi}
+                            </h1>
+                            <div className="mt-8 text-gray-400 text-xs italic">(Space to Flip)</div>
+                        </div>
+
+                        {/* Back */}
+                        <div className="card-back absolute w-full h-full bg-amber-50 rounded-2xl flex flex-col items-center justify-center p-6 border-2 border-amber-200">
+                            <h2 className="text-3xl text-amber-600 font-bold mb-2">{currentWord.pinyin}</h2>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); speak(currentWord.hanzi); }}
+                                className="mb-6 w-10 h-10 bg-white rounded-full flex items-center justify-center text-amber-500 shadow-sm hover:scale-110 transition"
+                            >
+                                <i className="ph-fill ph-speaker-high text-xl"></i>
+                            </button>
+                            <div className="bg-white p-3 rounded-lg shadow-sm w-full mb-2 text-center">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">English</span>
+                                <p className="text-gray-800 font-bold leading-tight">{currentWord.en}</p>
+                            </div>
+                            <div className="bg-white p-3 rounded-lg shadow-sm w-full text-center">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Russian</span>
+                                <p className="text-gray-800 font-bold leading-tight">{currentWord.ru}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex gap-3 mt-6 w-full">
+                    <button 
+                        onClick={() => handleNext(0)} 
+                        className="flex-1 py-3 bg-rose-100 text-rose-600 font-bold rounded-xl hover:bg-rose-200 transition border border-rose-200 shadow-sm"
+                    >
+                        (A)gain
+                    </button>
+                    <button 
+                        onClick={() => handleNext(1)} 
+                        className="flex-1 py-3 bg-emerald-100 text-emerald-600 font-bold rounded-xl hover:bg-emerald-200 transition border border-emerald-200 shadow-sm"
+                    >
+                        (K)new
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    // 2. QUIZ MODE
+    const QuizMode = ({ words }) => {
+        const [current, setCurrent] = useState(null);
+        const [options, setOptions] = useState([]);
+        const [status, setStatus] = useState('guessing');
+        const [stats, setStats] = useState({ correct: 0, total: 0 });
+
+        const generateQuestion = () => {
+            if (!words || words.length < 4) return;
+            const target = words[Math.floor(Math.random() * words.length)];
+            const distractors = shuffleArray(words.filter(w => w.id !== target.id)).slice(0, 3);
+            const allOptions = shuffleArray([target, ...distractors]);
+            setCurrent(target);
+            setOptions(allOptions);
+            setStatus('guessing');
+        };
+
+        useEffect(() => { 
+            if (words && words.length >= 4) {
+                generateQuestion(); 
+            } else {
+                setCurrent(null);
+            }
+        }, [words]);
+
+        const handleGuess = (wordId) => {
+            if (status !== 'guessing' || !current) return;
+            const isCorrect = wordId === current.id;
+            setStats(s => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
+            setStatus(isCorrect ? 'correct' : 'wrong');
+            if (isCorrect) speak(current.hanzi);
+        };
+
+        if (!current) return <div className="text-center p-10">Not enough words for quiz</div>;
+
+        return (
+            <div className="w-full max-w-sm mx-auto mt-6">
+                <div className="flex justify-between text-amber-800 font-bold mb-4 text-sm bg-amber-100 px-3 py-1 rounded-lg">
+                    <span>Score: {stats.correct}</span>
+                    <span>Total: {stats.total}</span>
+                </div>
+
+                <div className="bg-white p-10 rounded-2xl shadow-sm border-b-4 border-amber-200 text-center mb-6">
+                    <h2 className="zh-text text-6xl font-bold text-gray-800 mb-2">{current.hanzi}</h2>
+                    <p className="text-gray-400 font-mono text-lg">
+                        {status !== 'guessing' ? current.pinyin : '???'}
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                    {options.map(opt => (
+                        <button
+                            key={opt.id}
+                            onClick={() => handleGuess(opt.id)}
+                            disabled={status !== 'guessing'}
+                            className={`
+                                p-4 rounded-xl text-left transition font-medium border-2 relative
+                                ${status === 'guessing' ? 'bg-white border-gray-100 hover:bg-amber-50 hover:border-amber-200' : ''}
+                                ${status !== 'guessing' && opt.id === current.id ? 'bg-green-50 border-green-400 text-green-800' : ''}
+                                ${status === 'wrong' && opt.id !== current.id ? 'opacity-50 border-transparent' : ''}
+                                ${status === 'wrong' && opt.id === current.id ? 'bg-green-50 border-green-400 text-green-800' : ''} 
+                            `}
+                        >
+                            <div className="text-gray-800">{opt.en}</div>
+                            <div className="text-gray-400 text-xs">{opt.ru}</div>
+                        </button>
+                    ))}
+                </div>
+
+                {status !== 'guessing' && (
+                    <button 
+                        onClick={generateQuestion} 
+                        className="w-full mt-6 py-3 bg-amber-500 text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition"
+                    >
+                        Next Word <i className="ph-bold ph-arrow-right ml-1"></i>
+                    </button>
+                )}
+            </div>
+        );
+    };
+
+    // 3. SENTENCE BUILDER
+    const SentenceBuilder = ({ words }) => {
+        const [currentQ, setCurrentQ] = useState(0);
+        const [userOrder, setUserOrder] = useState([]);
+        const [bank, setBank] = useState([]);
+        const [isCorrect, setIsCorrect] = useState(false);
+
+        // Only words that have sentence chunks defined
+        const validWords = useMemo(
+            () => (words || []).filter(w => w.chunks && w.chunks.length > 0),
+            [words]
+        );
+        const currentWord = validWords[currentQ];
+
+        useEffect(() => {
+            if (currentWord) resetLevel();
+        }, [currentQ, validWords.length]);
+
+        const resetLevel = () => {
+            const chunks = currentWord.chunks;
+            setBank(shuffleArray(chunks.map((c, i) => ({ id: i, text: c }))));
+            setUserOrder([]);
+            setIsCorrect(false);
+        };
+
+        const handleBankClick = (item) => {
+            if (!currentWord || isCorrect) return;
+            const newBank = bank.filter(i => i.id !== item.id);
+            const newOrder = [...userOrder, item];
+            setBank(newBank);
+            setUserOrder(newOrder);
+            
+            const currentStr = newOrder.map(o => o.text).join('');
+            const targetStr = currentWord.chunks.join('');
+            
+            if (currentStr === targetStr) {
+                setIsCorrect(true);
+                speak(currentWord.sentence);
+            }
+        };
+
+        const handleSlotClick = (item) => {
+            if (isCorrect) return;
+            setUserOrder(userOrder.filter(i => i.id !== item.id));
+            setBank([...bank, item]);
+        };
+
+        const nextLevel = () => {
+            if (validWords.length === 0) return;
+            setCurrentQ((prev) => (prev + 1) % validWords.length);
+        };
+
+        if (!currentWord) {
+            return (
+                <div className="text-center p-10 text-amber-500">
+                    No sentences available in this deck yet.
+                </div>
+            );
+        }
+
+        return (
+            <div className="w-full max-w-md mx-auto mt-4 flex flex-col h-[calc(100vh-180px)]">
+                <ProgressBar current={currentQ + 1} total={validWords.length} label="Sentence" />
+                
+                <div className="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-amber-400 mb-4">
+                    <div className="text-lg font-bold text-gray-800 mb-1">{currentWord.en}</div>
+                    <div className="text-sm text-gray-500">{currentWord.ru}</div>
+                    <div className="text-xs text-amber-500 mt-2 font-bold uppercase">Build the sentence</div>
+                </div>
+
+                <div className={`flex-grow bg-amber-50 rounded-2xl p-4 border-2 border-dashed transition-colors flex content-start flex-wrap gap-2
+                    ${isCorrect ? 'border-green-400 bg-green-50' : 'border-amber-300'}`}
+                >
+                    {userOrder.length === 0 && !isCorrect && (
+                        <div className="w-full text-center text-amber-300 mt-10 font-bold text-sm">
+                            Tap words below
+                        </div>
+                    )}
+
+                    {userOrder.map((item) => (
+                        <button
+                            key={item.id}
+                            onClick={() => handleSlotClick(item)}
+                            className="zh-text bg-white px-3 py-2 rounded-lg shadow-sm text-lg border-b-2 border-gray-200 animate-pop font-bold text-gray-700"
+                        >
+                            {item.text}
+                        </button>
+                    ))}
+                </div>
+
+                {isCorrect && (
+                    <div className="animate-pop my-4 p-4 bg-green-100 rounded-xl border border-green-300 text-center shadow-lg">
+                        <h3 className="text-green-800 font-bold text-xl mb-1">Correct! 🎉</h3>
+                        <button
+                            onClick={nextLevel}
+                            className="bg-green-600 text-white px-8 py-2 rounded-full font-bold shadow hover:bg-green-700 mt-2"
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                    {bank.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => handleBankClick(item)}
+                            className="zh-text bg-white px-4 py-3 rounded-xl shadow border border-amber-100 hover:bg-amber-50 text-lg font-bold text-gray-800"
+                        >
+                            {item.text}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    // 4. TYPE IT MODE
+    const TypeItMode = ({ words }) => {
+        const [index, setIndex] = useState(0);
+        const [input, setInput] = useState('');
+        const [status, setStatus] = useState('typing'); // typing, correct, wrong
+
+        if (!words || words.length === 0) {
+            return <div className="text-center p-10 text-amber-500">Deck Empty</div>;
+        }
+
+        const word = words[index];
+
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            if (input.trim() === word.hanzi) {
+                setStatus('correct');
+                speak(word.hanzi);
+            } else {
+                setStatus('wrong');
+                speak('再试一次');
+            }
+        };
+
+        const next = () => {
+            setIndex((prev) => (prev + 1) % words.length);
+            setInput('');
+            setStatus('typing');
+        };
+
+        return (
+            <div className="w-full max-w-sm mx-auto mt-10 text-center">
+                <div className="bg-white p-8 rounded-3xl shadow-lg border border-amber-100 mb-8 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-2 bg-amber-400"></div>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-2">{word.en}</h2>
+                    <p className="text-gray-400 font-medium">{word.ru}</p>
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                    <input 
+                        type="text" 
+                        value={input}
+                        onChange={(e) => { setInput(e.target.value); setStatus('typing'); }}
+                        placeholder="Type Hanzi..."
+                        className={`zh-text w-full p-4 text-center text-4xl rounded-2xl border-2 outline-none transition shadow-inner
+                            ${status === 'correct' ? 'border-green-500 bg-green-50 text-green-900' : 'border-gray-200 focus:border-amber-400'}
+                            ${status === 'wrong' ? 'border-red-400 bg-red-50' : ''}
+                        `}
+                    />
+                    {status === 'correct' && (
+                        <div className="mt-6 animate-pop">
+                            <div className="text-green-600 font-bold mb-3 text-lg">{word.pinyin}</div>
+                            <button 
+                                type="button" 
+                                onClick={next} 
+                                className="bg-amber-500 text-white px-10 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
+                    {status === 'wrong' && (
+                        <div className="mt-4 text-red-500 font-bold animate-pulse">
+                            Answer: {word.hanzi}
+                        </div>
+                    )}
+                    {status === 'typing' && (
+                        <button 
+                            type="submit" 
+                            className="mt-6 text-amber-400 font-bold text-sm tracking-wider uppercase"
+                        >
+                            Press Enter to Check
+                        </button>
+                    )}
+                </form>
+            </div>
+        );
+    };
+
+    // 5. LIST VIEW MODE
+    const ListView = ({ words }) => (
+        <div className="w-full max-w-md mx-auto mt-2 pb-20">
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-amber-100">
+                <div className="bg-amber-50 px-4 py-3 border-b border-amber-100 flex justify-between items-center sticky top-0">
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
+                        {words ? words.length : 0} Words
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-bold bg-white px-2 py-1 rounded-full border border-gray-100">
+                        Tap row to listen
+                    </span>
+                </div>
+                <div className="divide-y divide-gray-50 max-h-[70vh] overflow-y-auto no-scrollbar">
+                    {(words || []).map(w => (
+                        <div 
+                            key={w.id} 
+                            onClick={() => speak(w.hanzi)}
+                            className="p-4 hover:bg-amber-50 transition-colors cursor-pointer flex justify-between items-center group"
+                        >
+                            <div>
+                                <div className="flex items-baseline gap-2">
+                                    <div className="zh-text text-xl font-bold text-gray-800 group-hover:text-amber-600 transition-colors">
+                                        {w.hanzi}
+                                    </div>
+                                    <div className="text-xs text-gray-400 font-mono">
+                                        {w.pinyin}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="text-right max-w-[50%]">
+                                <div className="text-sm font-bold text-gray-700 leading-tight">
+                                    {w.en}
+                                </div>
+                                <div className="text-xs text-gray-400 mt-0.5">
+                                    {w.ru}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    // --- MAIN APP COMPONENT ---
+    const App = () => {
+        const [currentDeckId, setCurrentDeckId] = useState('L01-L03');
+        const [mode, setMode] = useState('flashcard');
+        const [mastery, setMastery] = useState({});
+        const [showDeckMenu, setShowDeckMenu] = useState(false);
+
+        // Load progress (separate key for HSK2)
+        useEffect(() => {
+            const saved = localStorage.getItem('hsk2_mastery');
+            if (saved) {
+                try {
+                    setMastery(JSON.parse(saved));
+                } catch {
+                    setMastery({});
+                }
+            }
+        }, []);
+
+        const updateMastery = (id, score) => {
+            const newMastery = { ...mastery, [id]: (mastery[id] || 0) + score };
+            setMastery(newMastery);
+            localStorage.setItem('hsk2_mastery', JSON.stringify(newMastery));
+        };
+
+        const resetProgress = () => {
+            if (confirm("Reset all progress?")) {
+                setMastery({});
+                localStorage.removeItem('hsk2_mastery');
+            }
+        };
+
+        // Filter words based on deck
+        const activeWords = useMemo(() => {
+            const deckConfig = DECKS.find(d => d.id === currentDeckId);
+            if (!deckConfig) return RAW_DATA;
+            if (deckConfig.range === 'ALL') return RAW_DATA;
+            return RAW_DATA.filter(w => deckConfig.range.includes(w.lesson));
+        }, [currentDeckId]);
+
+        const currentDeckLabel = (DECKS.find(d => d.id === currentDeckId) || DECKS[0]).label;
+
+        const NavBtn = ({ id, icon, label }) => (
+            <button 
+                onClick={() => setMode(id)} 
+                className={`flex flex-col items-center gap-1 p-2 transition-all ${mode === id ? 'text-amber-600' : 'text-gray-300 hover:text-amber-400'}`}
+            >
+                <i className={`ph-fill ${icon} text-2xl ${mode === id ? 'scale-110' : ''}`}></i>
+                <span className="text-[10px] font-bold uppercase">{label}</span>
+            </button>
+        );
+
+        return (
+            <div className="min-h-screen flex flex-col bg-amber-50 pb-24 relative overflow-hidden">
+                {/* Header */}
+                <header className="bg-white shadow-sm sticky top-0 z-20 px-4 py-3 flex justify-between items-center rounded-b-2xl">
+                    <div className="flex items-center gap-2 text-amber-600">
+                        <div className="w-12 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                            <span className="font-extrabold text-sm">HSK2</span>
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-gray-800 leading-tight">Word Master</h1>
+                            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">
+                                {currentDeckLabel}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={resetProgress} 
+                            className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center"
+                        >
+                            <i className="ph-bold ph-trash"></i>
+                        </button>
+                        <button 
+                            onClick={() => setShowDeckMenu(!showDeckMenu)} 
+                            className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shadow-sm active:scale-95 transition"
+                        >
+                            <i className="ph-bold ph-folders"></i>
+                        </button>
+                    </div>
+                </header>
+
+                {/* Deck Menu Overlay */}
+                {showDeckMenu && (
+                    <div className="absolute top-16 right-4 z-30 bg-white rounded-2xl shadow-xl border border-amber-100 p-2 w-48 animate-pop origin-top-right">
+                        <div className="text-xs font-bold text-gray-400 px-3 py-2 uppercase">
+                            Select Deck
+                        </div>
+                        {DECKS.map(deck => (
+                            <button 
+                                key={deck.id}
+                                onClick={() => { 
+                                    setCurrentDeckId(deck.id); 
+                                    setShowDeckMenu(false); 
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold mb-1 transition 
+                                    ${currentDeckId === deck.id ? 'bg-amber-100 text-amber-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                {deck.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Content */}
+                <main className="flex-grow px-4 py-6 relative z-10">
+                    {mode === 'flashcard' && (
+                        <FlashcardMode words={activeWords} onUpdateMastery={updateMastery} />
+                    )}
+                    {mode === 'quiz' && (
+                        <QuizMode words={activeWords} />
+                    )}
+                    {mode === 'typeit' && (
+                        <TypeItMode words={activeWords} />
+                    )}
+                    {mode === 'sentence' && (
+                        <SentenceBuilder words={activeWords} />
+                    )}
+                    {mode === 'list' && (
+                        <ListView words={activeWords} />
+                    )}
+                </main>
+
+                {/* Bottom Nav */}
+                <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-amber-100 pb-safe px-2 py-2 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 rounded-t-3xl">
+                    <NavBtn id="flashcard" icon="ph-cards" label="Cards" />
+                    <NavBtn id="list" icon="ph-list-dashes" label="List" />
+                    <NavBtn id="quiz" icon="ph-question" label="Quiz" />
+                    <NavBtn id="sentence" icon="ph-squares-four" label="Build" />
+                    <NavBtn id="typeit" icon="ph-keyboard" label="Type" />
+                </nav>
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+</script>
+</body>
+</html>
