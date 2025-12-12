@@ -639,8 +639,8 @@
             // Filter Words based on Deck
             const activeWords = useMemo(() => {
                 const deckConfig = DECKS.find(d => d.id === currentDeckId);
-                if (deckConfig.range === 'ALL') return RAW_DATA;
-                return RAW_DATA.filter(w => deckConfig.range.includes(w.lesson));
+                if (deckConfig.range === 'ALL') return HSK2_VOCAB;
+                return HSK2_VOCAB.filter(w => deckConfig.range.includes(w.lesson));
             }, [currentDeckId]);
 
             const currentDeckLabel = DECKS.find(d => d.id === currentDeckId).label;
